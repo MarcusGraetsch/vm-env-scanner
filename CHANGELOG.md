@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Integration with common CI/CD systems
 - Ansible playbook generation based on scan results
 
-## [2.0.0] - 2025-01-15
+## [2.0.0] - 2025-11-27
 
 ### Added
 - Complete rewrite with modular architecture
@@ -28,8 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Corporate CA certificate detection in `/usr/local/share/ca-certificates/`
 - Git credential helper and SSH key detection
 - Kubernetes config and context enumeration
-- Cloud provider credential existence checks (AWS, Azure, GCP)
-- Cloud endpoint connectivity tests (AWS, Azure, GCP, IONOS, Stackit, Delos)
+- Cloud provider credential existence checks (AWS, Azure, GCP, Alibaba, Oracle)
+- Cloud endpoint connectivity tests (AWS, Azure, GCP, IONOS, Stackit, Delos, Alibaba, Oracle)
 - IDE configuration detection (VS Code, Cursor)
 - Known TLS interception vendor detection (ZScaler, Palo Alto, Fortinet, etc.)
 - Comprehensive developer tools inventory with version detection
@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Timeout protection on all network operations
 - Warning and error collection with summary reporting
 - Clear separation of "self-service actions" vs "IT requests needed"
+- Critical dependency check (jq) at startup for reliable JSON parsing.
+- Sequential read I/O performance testing to complement write speed.
 
 ### Changed
 - Renamed script to `vm_env_scanner.sh` (dropped `_v2` suffix)
@@ -87,8 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| 2.0.0 | 2025-01-15 | Complete rewrite, modular architecture, AI-ready JSON |
-| 1.0.0 | 2025-01-14 | Initial proof-of-concept |
+| 2.0.0 | 2025-11-27 | Complete rewrite, modular architecture, AI-ready JSON |
+| 1.0.0 | 2025-11-25 | Initial proof-of-concept |
 
 ## Upgrade Guide
 

@@ -57,6 +57,8 @@ readonly CLOUD_ENDPOINTS=(
     "cloud.ionos.de"
     "portal.stackit.cloud"
     "my.delos-cloud.com"
+    "intl.aliyun.com" # Added Alibaba Cloud
+    "oraclecloud.com" # Added Oracle Cloud Infrastructure
 )
 
 # Network timeout for TLS/connectivity tests (seconds)
@@ -148,15 +150,26 @@ json_escape() {
     local str="$1"
     str="${str//\\/\\\\}"      # backslash
     str="${str//\"/\\\"}"      # double quote
-    str="${str//$'\n'/\\n}"    # newline
-    str="${str//$'\r'/\\r}"    # carriage return
-    str="${str//$'\t'/\\t}"    # tab
+    str="${str//$'\\n'/\\\\n}"    # newline
+    str="${str//$'\\r'/\\\\r}"    # carriage return
+    str="${str//$'\\t'/\\\\t}"    # tab
     printf '%s' "$str"
 }
 
 # Check if command exists
 cmd_exists() {
     command -v "$1" >/dev/null 2>&1
+}
+
+# Check for critical dependencies
+check_dependencies() {
+    log_info "--- Checking Essential Dependencies ---"
+    if ! cmd_exists jq; then
+        log_error "Essential tool 'jq' is not installed. JSON output quality will be severely degraded (e.g., version parsing will fail). Please install 'jq' (e.g., sudo apt install jq)."
+    else
+        log_info "Dependency 'jq' found."
+    fi
+    log_info "--- End Dependency Check ---"
 }
 
 # Write to report file
@@ -861,7 +874,7 @@ scan_snap_connectivity() {
         report "  [!] Snap likely blocked by TLS interception"
     fi
     
-    json_set "snap_connectivity" "\"$(json_escape "$snap_debug" | head -c 500)\""
+    json_set "snap_connectivity" "\"$(json_escape "$(echo "$snap_debug" | head -c 500)")\""
 }
 
 scan_docker() {
@@ -1016,6 +1029,8 @@ scan_dev_tools() {
         ["az"]="cloud"
         ["gcloud"]="cloud"
         ["ionosctl"]="cloud"
+        ["aliyun"]="cloud" # Alibaba Cloud CLI
+        ["oci"]="cloud"    # Oracle Cloud CLI
         
         # Languages & Package Managers
         ["python3"]="lang"
@@ -1150,17 +1165,29 @@ scan_devops_specific() {
     local gcloud_creds="no"
     [[ -d "$HOME/.config/gcloud" ]] && gcloud_creds="yes"
     
+    local alibaba_creds="no"
+    [[ -d "$HOME/.aliyun" ]] && alibaba_creds="yes"
+    
+    local oracle_creds="no"
+    [[ -d "$HOME/.oci" ]] && oracle_creds="yes"
+    
     log_info "AWS credentials: $aws_creds"
     log_info "Azure credentials: $azure_creds"
     log_info "GCloud credentials: $gcloud_creds"
+    log_info "Alibaba credentials: $alibaba_creds"
+    log_info "Oracle credentials: $oracle_creds"
     
     report "AWS credentials present: $aws_creds"
     report "Azure credentials present: $azure_creds"
     report "GCloud credentials present: $gcloud_creds"
+    report "Alibaba credentials present: $alibaba_creds"
+    report "Oracle credentials present: $oracle_creds"
     
     json_set "aws_credentials_exist" "\"$aws_creds\""
     json_set "azure_credentials_exist" "\"$azure_creds\""
     json_set "gcloud_credentials_exist" "\"$gcloud_creds\""
+    json_set "alibaba_credentials_exist" "\"$alibaba_creds\""
+    json_set "oracle_credentials_exist" "\"$oracle_creds\""
     
     # IDE/Editor extensions directory check
     log_info "--- IDE Configuration ---"
@@ -1181,24 +1208,40 @@ scan_storage_io() {
     log_section "Storage I/O & Performance"
     report_section "Storage I/O & Performance"
     
-    # Quick I/O test (write speed to home directory)
+    # Quick I/O test (write and read speed to home directory)
     log_info "--- Simple I/O Test ---"
     report "--- Simple I/O Test ---"
     
     local io_test_file="$HOME/.io_test_$$"
     local write_speed="unknown"
+    local read_speed="unknown"
     
     if cmd_exists dd; then
         # Write 100MB test
-        local dd_output
-        dd_output="$(dd if=/dev/zero of="$io_test_file" bs=1M count=100 conv=fdatasync 2>&1 || echo 'failed')"
-        rm -f "$io_test_file"
+        local dd_output_write
+        dd_output_write="$(dd if=/dev/zero of="$io_test_file" bs=1M count=100 conv=fdatasync 2>&1 || echo 'failed')"
         
-        if [[ "$dd_output" != "failed" ]]; then
-            write_speed="$(echo "$dd_output" | grep -oE '[0-9.]+ [MG]B/s' | tail -1 || echo 'parsed failed')"
+        if [[ "$dd_output_write" != "failed" ]]; then
+            write_speed="$(echo "$dd_output_write" | grep -oE '[0-9.]+ [MG]B/s' | tail -1 || echo 'parsed failed')"
             log_info "Sequential write (100MB): $write_speed"
             report "Sequential write speed: $write_speed"
+
+            # Read 100MB test (clear cache first for better realism, requires sudo)
+            if [[ "$DRY_RUN" != "true" ]]; then
+                # Drop caches - note: this requires sudo
+                run_sudo sysctl vm.drop_caches=3 >/dev/null 2>&1
+            fi
+
+            local dd_output_read
+            dd_output_read="$(dd if="$io_test_file" of=/dev/null bs=1M count=100 2>&1 || echo 'failed')"
+            
+            if [[ "$dd_output_read" != "failed" ]]; then
+                read_speed="$(echo "$dd_output_read" | grep -oE '[0-9.]+ [MG]B/s' | tail -1 || echo 'parsed failed')"
+                log_info "Sequential read (100MB): $read_speed"
+                report "Sequential read speed: $read_speed"
+            fi
         fi
+        rm -f "$io_test_file"
     fi
     
     # iostat if available
@@ -1212,6 +1255,7 @@ scan_storage_io() {
     fi
     
     json_set "io_write_speed" "\"$(json_escape "$write_speed")\""
+    json_set "io_read_speed" "\"$(json_escape "$read_speed")\""
 }
 
 generate_summary() {
@@ -1385,7 +1429,7 @@ generate_json() {
         echo "  },"
         
         echo "  \"storage\": {"
-        for key in root_fs_type root_fs_size root_fs_available root_fs_use_percent tmp_writable home_writable readonly_mounts io_write_speed; do
+        for key in root_fs_type root_fs_size root_fs_available root_fs_use_percent tmp_writable home_writable readonly_mounts io_write_speed io_read_speed; do
             [[ -n "${JSON_DATA[$key]:-}" ]] && echo "    \"$key\": ${JSON_DATA[$key]},"
         done
         echo "    \"_\": null"
@@ -1426,7 +1470,7 @@ generate_json() {
         echo "  },"
         
         echo "  \"devops\": {"
-        for key in git_user git_email ssh_keys_present kubeconfig_exists aws_credentials_exist azure_credentials_exist gcloud_credentials_exist; do
+        for key in git_user git_email ssh_keys_present kubeconfig_exists aws_credentials_exist azure_credentials_exist gcloud_credentials_exist alibaba_credentials_exist oracle_credentials_exist; do
             [[ -n "${JSON_DATA[$key]:-}" ]] && echo "    \"$key\": ${JSON_DATA[$key]},"
         done
         echo "    \"_\": null"
@@ -1525,6 +1569,11 @@ EOF
     log_info "VM Environment Scanner v$VERSION"
     log_info "Starting scan at $NOW"
     log_info "Dry-run mode: $DRY_RUN"
+    log_info ""
+
+    # Check for critical dependencies
+    check_dependencies
+    
     log_info ""
     
     # Run scans (filtered if --section specified)
