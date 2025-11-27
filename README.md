@@ -110,6 +110,154 @@ Available sections: `system`, `virt`, `user`, `disk`, `packages`, `network`, `fi
 
 Suppresses human-readable output; only generates the JSON report.
 
+## Automated Environment Setup
+
+After running the scanner and reviewing the results, you can use the **automated setup script** to install all missing DevOps tools and configure your environment.
+
+### Quick Start
+
+```bash
+# 1. Run the scanner first
+./vm_env_scanner_v2.sh
+
+# 2. Review the generated report
+cat ~/vm_env_scan_report.json
+
+# 3. Run the automated setup
+chmod +x vm_env_setup.sh
+./vm_env_setup.sh
+```
+
+### What Gets Installed
+
+The setup script automatically installs:
+
+**Base Development Tools**
+- Build essentials, git, curl, wget, jq, yq
+- tmux, vim, nano, htop, tree
+
+**Programming Languages & Runtimes**
+- Node.js 20.x LTS + npm + yarn
+- Go (latest stable)
+- Rust (via rustup)
+- Python development tools (respects PEP 668)
+
+**Cloud Provider CLIs**
+- AWS CLI v2
+- Azure CLI
+- Google Cloud SDK
+- Oracle Cloud CLI (oci)
+- Alibaba Cloud CLI (aliyun)
+- IONOS Cloud CLI (ionosctl)
+- STACKIT CLI
+
+**Kubernetes Tools**
+- kubectl
+- Helm
+- k9s
+- Minikube
+- kind
+- k3d
+
+**Infrastructure as Code**
+- Terraform
+- OpenTofu
+- Pulumi
+
+**IDEs & Editors**
+- Visual Studio Code
+- Cursor (AI-powered IDE)
+- Neovim
+
+**AI Coding Assistants**
+- GitHub CLI (for Copilot)
+- Claude Code CLI
+
+**Container Tools**
+- Docker (if not already installed)
+- Proper docker group configuration
+
+### Setup Script Options
+
+```bash
+# Dry run - see what would be installed without installing
+./vm_env_setup.sh --dry-run
+
+# Skip specific categories
+./vm_env_setup.sh --skip-cloud    # Skip cloud provider CLIs
+./vm_env_setup.sh --skip-k8s      # Skip Kubernetes tools
+./vm_env_setup.sh --skip-iac      # Skip IaC tools
+./vm_env_setup.sh --skip-ide      # Skip IDE installations
+
+# Use a different scan file
+./vm_env_setup.sh --scan-file /path/to/custom_scan.json
+
+# Combine options
+./vm_env_setup.sh --dry-run --skip-ide --skip-k8s
+```
+
+### Handling Corporate TLS Certificates
+
+If the scanner detected TLS interception (common in corporate environments), use the certificate fixer:
+
+```bash
+chmod +x fix_tls_certificates.sh
+./fix_tls_certificates.sh
+```
+
+This will:
+1. Extract the corporate certificate from your HTTPS connections
+2. Install it system-wide
+3. Configure all development tools (git, npm, pip, curl, wget, docker) to use it
+4. Test connectivity to common package registries
+
+**Automatic installation:**
+```bash
+./fix_tls_certificates.sh --auto-install
+```
+
+**Test a different domain:**
+```bash
+./fix_tls_certificates.sh --test-domain pypi.org
+```
+
+### Post-Installation Steps
+
+After running the setup script, you'll need to:
+
+1. **Reload your shell configuration:**
+   ```bash
+   source ~/.bashrc
+   # Or log out and log back in
+   ```
+
+2. **Authenticate with cloud providers:**
+   ```bash
+   aws configure          # AWS
+   az login              # Azure
+   gcloud auth login     # Google Cloud
+   oci setup config      # Oracle Cloud
+   aliyun configure      # Alibaba Cloud
+   ionosctl login        # IONOS
+   stackit auth login    # STACKIT
+   ```
+
+3. **Set up AI coding assistants:**
+   ```bash
+   gh auth login         # GitHub Copilot
+   claude-code auth      # Claude Code
+   ```
+
+4. **Configure Docker (if user group was changed):**
+   - Log out and log back in for docker group membership to take effect
+   - Or run: `newgrp docker`
+
+### Logs and Reports
+
+The setup script generates detailed logs:
+- `vm_env_setup_YYYYMMDD_HHMMSS.log` - Full installation log
+- `vm_env_setup_complete_YYYYMMDD_HHMMSS.json` - Summary of what was installed, failed, or skipped
+
 ## Understanding the Output
 
 ### The Human Report (`~/vm_env_scan_report.txt`)
