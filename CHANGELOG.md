@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **vm_env_setup.sh**: Automated DevOps environment setup script that reads `vm_env_scan_report.json` and installs missing tools
+  - Installs base development tools (build-essential, git, curl, wget, jq, yq, tmux, vim, htop, tree)
+  - Installs programming languages and runtimes (Node.js 20.x LTS, Go, Rust, Python dev tools)
+  - Installs cloud provider CLIs (AWS, Azure, GCP, Oracle, Alibaba, IONOS, STACKIT)
+  - Installs Kubernetes tools (kubectl, helm, k9s, minikube, kind, k3d)
+  - Installs Infrastructure as Code tools (Terraform, OpenTofu, Pulumi)
+  - Installs IDEs and editors (VS Code, Cursor, Neovim)
+  - Installs AI coding assistants (GitHub CLI for Copilot, Claude Code CLI)
+  - Configures Docker installation and user permissions
+  - Respects PEP 668 restrictions (uses pipx for global Python tools)
+  - Handles corporate TLS interception scenarios
+  - Provides `--dry-run` mode to preview installations
+  - Supports selective installation with `--skip-cloud`, `--skip-k8s`, `--skip-iac`, `--skip-ide` flags
+  - Generates detailed installation logs and JSON completion reports
+  - Tracks successful installations, failures, and skipped items
+- **fix_tls_certificates.sh**: Corporate TLS certificate extraction and installation tool
+  - Automatically detects corporate TLS interception (MITM proxies/firewalls)
+  - Extracts corporate CA certificates from HTTPS connections
+  - Installs certificates system-wide via `/usr/local/share/ca-certificates/`
+  - Configures development tools to use system certificates (git, npm, pip, curl, wget, docker)
+  - Tests connectivity to common package registries after installation
+  - Supports `--auto-install` for unattended execution
+  - Supports `--test-domain` to extract certificates from specific domains
+- Comprehensive documentation in README.md for automated setup workflow
+- Post-installation guide with cloud provider authentication steps
+- Shell configuration helpers for PATH updates
+
 ### Planned
 - macOS support
 - Windows WSL2 detection and scanning

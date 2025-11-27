@@ -8,7 +8,7 @@
 # Usage: ./vm_env_setup.sh [OPTIONS]
 #
 # Options:
-#   --scan-file FILE    Path to scan JSON (default: vm_env_scan_report.json)
+#   --scan-file FILE    Path to scan JSON (default: ~/vm_env_scan_report.json)
 #   --dry-run           Show what would be installed without installing
 #   --skip-cloud        Skip cloud provider CLI installations
 #   --skip-ide          Skip IDE installations
@@ -35,7 +35,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-SCAN_FILE="vm_env_scan_report.json"
+SCAN_FILE="$HOME/vm_env_scan_report.json"
 DRY_RUN=false
 SKIP_CLOUD=false
 SKIP_IDE=false
@@ -160,7 +160,12 @@ fi
 
 section "Analyzing Environment"
 
-# Extract key information
+log_info "Reading scan data from: $SCAN_FILE"
+log_info "This JSON file was created by vm_env_scanner_v2.sh"
+echo ""
+
+# Extract key information from the scan JSON
+# This tells us what's already installed, what restrictions exist, etc.
 OS_RELEASE=$(jq -r '.system.os_release' "$SCAN_FILE")
 ARCH=$(jq -r '.system.arch' "$SCAN_FILE")
 HAS_DOCKER=$(jq -r '.containers.docker_installed' "$SCAN_FILE")
